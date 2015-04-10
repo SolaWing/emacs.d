@@ -1,6 +1,6 @@
 (when *is-a-mac*
-  (setq mac-command-modifier 'meta)
-  (setq mac-option-modifier 'none)
+  (setq mac-command-modifier 'super)
+  (setq mac-option-modifier 'meta)
   (setq default-input-method "MacOSX")
   ;; Make mouse wheel / trackpad scrolling less jerky
   (setq mouse-wheel-scroll-amount '(1
@@ -9,12 +9,20 @@
   (dolist (multiple '("" "double-" "triple-"))
     (dolist (direction '("right" "left"))
       (global-set-key (read-kbd-macro (concat "<" multiple "wheel-" direction ">")) 'ignore)))
-  (global-set-key (kbd "M-`") 'ns-next-frame)
-  (global-set-key (kbd "M-h") 'ns-do-hide-emacs)
-  (global-set-key (kbd "M-˙") 'ns-do-hide-others)
-  (after-load 'nxml-mode
-    (define-key nxml-mode-map (kbd "M-h") nil))
-  (global-set-key (kbd "M-ˍ") 'ns-do-hide-others) ;; what describe-key reports for cmd-option-h
+  (global-set-key (kbd "s-q") 'save-buffers-kill-emacs)
+  (global-set-key (kbd "s-w") 'delete-window)
+  (global-set-key (kbd "s-W") 'delete-frame)
+  (global-set-key (kbd "s-v") 'whole-line-or-region-yank)
+  (global-set-key (kbd "s-c") 'whole-line-or-region-copy-region-as-kill)
+  (global-set-key (kbd "s-x") 'whole-line-or-region-kill-region)
+  (global-set-key (kbd "s-z") 'undo)
+  (global-set-key (kbd "s-Z") 'undo-tree-redo)
+  (global-set-key (kbd "s-<backspace>") 'kill-whole-line)
+  (global-set-key (kbd "s-n") 'make-frame)
+  (global-set-key (kbd "s-m") 'suspend-frame)
+  (global-set-key (kbd "s-a") 'mark-whole-buffer)
+  (global-set-key (kbd "s-s") 'save-buffer)
+  (global-set-key (kbd "s-C-f") 'toggle-frame-fullscreen)
   )
 
 

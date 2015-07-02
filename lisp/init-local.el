@@ -34,8 +34,15 @@
 (add-hook 'php-mode-hook 'php-mode-yas-hook)
 ;; custom package
 (require-package 'evil)
+(require-package 'evil-visualstar)
+(require-package 'evil-surround)
+(require-package 'evil-matchit)
 (evil-mode 1)
+(global-evil-surround-mode 1)
+(global-evil-matchit-mode 1)
+(global-evil-visualstar-mode 1)
 (setq evil-default-state 'emacs)
+(define-key evil-visual-state-map "s" 'evil-surround-region)
 
 ;;; global key bind
 ;; global bind move to hjkl

@@ -2,6 +2,7 @@
 (setq auto-save-file-name-transforms  (quote ((".*" "/Users/mac/.emacs.d/autosavefile/" t))))
 (setq desktop-save-mode nil)
 (setq-default flycheck-disabled-checkers '(emacs-lisp-checkdoc))
+(setq ac-use-menu-map t)
 
 ;;; scheme
 (setq scheme-program-name "/Applications/MIT-Scheme.app/Contents/Resources/mit-scheme")

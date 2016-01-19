@@ -1,7 +1,8 @@
 ;;; set val
-(setq auto-save-file-name-transforms  (quote ((".*" "/Users/mac/.emacs.d/autosavefile/" t))))
+(setq auto-save-file-name-transforms  (quote ((".*" "~/.emacs.d/autosavefile/" t))))
 (setq desktop-save-mode nil)
 (setq-default flycheck-disabled-checkers '(emacs-lisp-checkdoc))
+(whitespace-cleanup-mode -1)
 
 ;;; scheme
 (setq scheme-program-name "/Applications/MIT-Scheme.app/Contents/Resources/mit-scheme")
@@ -26,11 +27,126 @@
 
 ;;; yasnippet
 (setq yas-prompt-functions '(yas-ido-prompt))
+(defun yas/expand-or-complete ()
+  "try expand yas at current point, or call yas-insert"
+  (interactive)
+
+  (if (use-region-p) (yas/visual-insert)
+    (yas-insert))
+  )
+
+(defun yas/visual-insert ()
+  "visual delete and call yas insert"
+  (let ((yas-selected-text (and (use-region-p)
+                                (delete-and-extract-region (region-beginning) (region-end)))))
+    (when (evil-visual-state-p) (evil-insert 1))
+    (yas-insert)))
+
+(after-load "yasnippet"
+    ;; yasnippet keymaps
+    (define-key yas-minor-mode-map (kbd "M-'") 'yas/expand-or-complete)
+  ;; yasnippet bugs, which cause yasnippet stop work. possible order is:
+  ;; set previous-field of snippet, previous-snippet commit and turn to point.
+  ;; snippet call yas--advance-end cause invalid marker error!
+  (setq yas--snippet-revive nil)
+  (advice-add 'yas--commit-snippet :before (lambda (snippet) "check dead previous field"
+                                             (when (and (yas--snippet-previous-active-field snippet)
+                                                        (consp (yas--field-end (yas--snippet-previous-active-field snippet))))
+                                               (setf (yas--snippet-previous-active-field snippet) nil)
+                                               ;; (message "clear dead field" args)
+                                               )))
+  )
+
+(require-package 'ycmd)
+(require-package 'company-ycmd)
+(setq-default
+ ycmd-server-command (list "python" (expand-file-name "~/.vim/bundle/YouCompleteMe/third_party/ycmd/ycmd/"))
+ ycmd-global-config (expand-file-name "~/.vim/bundle/YouCompleteMe/.ycm_extra_conf.py")
+ )
+(defun ycmd/force-semantic-complete ()
+  "Force semantic complete with company"
+  (interactive)
+  (let ((ycmd-force-semantic-completion 't))
+    (company-cancel)
+    (company-begin-backend 'company-ycmd nil)
+    )
+  )
+
+(with-eval-after-load "company-ycmd"
+  (define-key ycmd-mode-map (kbd "M-TAB") 'ycmd/force-semantic-complete)
+  ;; extract candidates infos
+  (defun company-ycmd--objc-param (prefix signature)
+    (when (and prefix signature)
+      (let ((match (s-match (format "%s\\(\\(?:\\^[^(]*\\)?([^)]*)\\|\\w+\\)" prefix) signature)))
+        (cadr match)
+        )))
+  (defun company-ycmd--construct-candidate-objc (candidate)
+    "function to construct completion objc string from a CANDIDATE."
+    (company-ycmd--with-destructured-candidate candidate
+      (let ((param (company-ycmd--objc-param insertion-text menu-text)))
+        (propertize insertion-text
+                    'return_type extra-menu-info
+                    'kind kind
+                    'doc detailed-info
+                    'meta detailed-info
+                    'param param))))
+
+  (advice-add 'company-ycmd--get-construct-candidate-fn :before-until
+              (lambda () "check if objc-mode first"
+                (when (eq major-mode 'objc-mode)
+                  #'company-ycmd--construct-candidate-objc)))
+
+  ;; post completion, add param
+  (defun company-template--add-objc-param (param)
+    (let ((templ (if (string-match "([^)]+)" param)
+                     (progn (let ((mb (+ 1 (match-beginning 0)))
+                                  (me (- (match-end 0) 1))
+                                  (ct 2)
+                                  str-in-paren)
+                              (setq str-in-paren (substring param mb me))
+                              (setq str-in-paren (replace-regexp-in-string "[^[:blank:],][^,]*"
+                                                                           (lambda (str)
+                                                                             (prog1 (format "${%d:%s}" ct str)
+                                                                               (setq ct (+ ct 1)))
+                                                                             ) str-in-paren 't 't))
+                              (concat "${1:" (substring param 0 mb) str-in-paren (substring param me) "}")
+                              ))
+                   (concat "${1:" param "}"))
+                 ))
+      ;; (message "templ %s " templ)
+      (yas-expand-snippet templ)
+      ))
+  (defun company-ycmd--objc-post-completion (candidate)
+    "Insert function arguments after completion for CANDIDATE."
+    (--when-let (and (eq major-mode 'objc-mode)
+                     company-ycmd-insert-arguments
+                     (get-text-property 0 'param candidate))
+      (company-template--add-objc-param it)
+      't
+      ))
+  (advice-add 'company-ycmd--post-completion :before-until
+              #'company-ycmd--objc-post-completion)
+  )
+
+(with-eval-after-load "company"
+  (setq
+   company-frontends '(company-pseudo-tooltip-frontend company-echo-metadata-frontend)
+   company-selection-wrap-around 't
+   ))
+
+;;; objc mode
+(add-to-list 'auto-mode-alist '("\\.h$" . objc-mode))
+(add-hook 'objc-mode-hook 'myobjc/config)
+(defun myobjc/config ()
+  "custom config for objc-mode"
+  (company-mode 1)
+  (ycmd-mode 1)
+  (c-set-style "linux")
+  (setq c-basic-offset 4 tab-width 8)
+  (setq company-backends '(company-ycmd))
+  )
 
 ;;; php mode
-(defun php-mode-yas-hook ()
-  (add-to-list 'ac-sources 'ac-source-yasnippet)
-  (unless yas-global-mode (yas-minor-mode-on)))
 (add-hook 'php-mode-hook 'php-mode-yas-hook)
 ;; custom package
 (require-package 'evil)
